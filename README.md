@@ -416,3 +416,48 @@ Tabs.Visual:AddButton({
     Description = "Teleporta e entra no banco do motorista",
     Callback = teleportAndEnterCar
 })
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+
+local function getClosestFreeDriverSeat()
+    local closestSeat = nil
+    local shortestDistance = math.huge
+
+    for _, seat in pairs(workspace:GetDescendants()) do
+        if seat:IsA("VehicleSeat") and not seat.Occupant then
+            local dist = (seat.Position - hrp.Position).Magnitude
+            if dist < shortestDistance then
+                shortestDistance = dist
+                closestSeat = seat
+            end
+        end
+    end
+
+    return closestSeat
+end
+
+local function enterAndDriveCar()
+    local seat = getClosestFreeDriverSeat()
+    if seat then
+        -- Teleporta acima do banco
+        hrp.CFrame = seat.CFrame + Vector3.new(0, 3, 0)
+        task.wait(0.1)
+        -- Senta o personagem (ativa controle do veículo)
+        humanoid.Sit = true
+        task.wait(0.3)
+        -- Move para dentro do banco (fixa posição)
+        hrp.CFrame = seat.CFrame
+        print("Você entrou no carro e pode dirigir agora.")
+    else
+        warn("Nenhum banco de motorista disponível.")
+    end
+end
+
+Tabs.Main:AddButton({
+    Title = "Entrar e dirigir carro mais próximo",
+    Description = "Teleporta e senta no banco para dirigir",
+    Callback = enterAndDriveCar
+})
