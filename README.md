@@ -371,3 +371,48 @@ Tabs.Visual:AddToggle("Esp", {
     Default = false,
     Callback = toggleEsp
 })
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+-- Localiza o carro mais próximo (com VehicleSeat)
+local function getClosestCarSeat()
+    local closestSeat = nil
+    local shortestDistance = math.huge
+
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("VehicleSeat") and v.Occupant == nil then
+            local distance = (v.Position - hrp.Position).Magnitude
+            if distance < shortestDistance then
+                shortestDistance = distance
+                closestSeat = v
+            end
+        end
+    end
+
+    return closestSeat
+end
+
+-- Teleporta e senta
+local function teleportAndEnterCar()
+    local seat = getClosestCarSeat()
+    if seat then
+        -- Teleporta acima do banco
+        hrp.CFrame = seat.CFrame + Vector3.new(0, 3, 0)
+        wait(0.2)
+        -- Senta automaticamente
+        character:WaitForChild("Humanoid"):Sit(true)
+        wait(0.2)
+        -- Move personagem pra sentar no banco
+        hrp.CFrame = seat.CFrame
+    else
+        warn("Nenhum carro disponível encontrado.")
+    end
+end
+
+Tabs.Visual:AddButton({
+    Title = "Entrar no carro mais próximo",
+    Description = "Teleporta e entra no banco do motorista",
+    Callback = teleportAndEnterCar
+})
