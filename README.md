@@ -116,18 +116,18 @@ Tabs.Main:AddToggle("infjump", {
 local velocidadeAtiva = false
 local velocidadeValor = 20 -- valor padrão
 
--- Slider para ajustar o valor da velocidade
-Tabs.Main:AddSlider("WalkSpeed", {
+Tabs.Main:AddInput("WalkSpeedManual", {
     Title = "Velocidade",
-    Description = "Define a velocidade do jogador",
-    Default = 20,
-    Min = 0,
-    Max = 200,
-    Rounding = 1,
-    Callback = function(value)
-        velocidadeValor = value
-        if velocidadeAtiva then
-            setHumanoidProperty("WalkSpeed", velocidadeValor)
+    Placeholder = "Digite a velocidade...",
+    Numeric = true,
+    Finished = true, -- aplica ao sair da caixa
+    Callback = function(inputValue)
+        local value = tonumber(inputValue)
+        if value and value >= 0 and value <= 200 then
+            velocidadeValor = value
+            if velocidadeAtiva then
+                setHumanoidProperty("WalkSpeed", velocidadeValor)
+            end
         end
     end
 })
@@ -154,7 +154,7 @@ local espAtivado = false
 local connections = {}
 
 Tabs.Visual:AddToggle("esp_nome_distancia", {
-    Title = "ESP Nome (Atualizado)",
+    Title = "ESP Nome",
     Description = "Ativa/Desativa ESP Nome e Distância",
     Default = false,
     Callback = function(state)
@@ -373,91 +373,22 @@ Tabs.Visual:AddToggle("Esp", {
 })
 
 local player = game.Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local hrp = character:WaitForChild("HumanoidRootPart")
 
--- Localiza o carro mais próximo (com VehicleSeat)
-local function getClosestCarSeat()
-    local closestSeat = nil
-    local shortestDistance = math.huge
+-- Função que tenta reviver o próprio jogador (se permitido pelo jogo)
+local function tentarReviver()
+    local reviveEvent = game:GetService("ReplicatedStorage"):FindFirstChild("RevivePlayer")
 
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("VehicleSeat") and v.Occupant == nil then
-            local distance = (v.Position - hrp.Position).Magnitude
-            if distance < shortestDistance then
-                shortestDistance = distance
-                closestSeat = v
-            end
-        end
-    end
-
-    return closestSeat
-end
-
--- Teleporta e senta
-local function teleportAndEnterCar()
-    local seat = getClosestCarSeat()
-    if seat then
-        -- Teleporta acima do banco
-        hrp.CFrame = seat.CFrame + Vector3.new(0, 3, 0)
-        wait(0.2)
-        -- Senta automaticamente
-        character:WaitForChild("Humanoid"):Sit(true)
-        wait(0.2)
-        -- Move personagem pra sentar no banco
-        hrp.CFrame = seat.CFrame
+    if reviveEvent and reviveEvent:IsA("RemoteEvent") then
+        reviveEvent:FireServer(player.Character) -- envia seu próprio personagem
+        print("Tentando se reviver...")
     else
-        warn("Nenhum carro disponível encontrado.")
+        warn("Evento de revive não encontrado.")
     end
 end
 
-Tabs.Visual:AddButton({
-    Title = "Entrar no carro mais próximo",
-    Description = "Teleporta e entra no banco do motorista",
-    Callback = teleportAndEnterCar
-})
-
-local player = game.Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local hrp = character:WaitForChild("HumanoidRootPart")
-local humanoid = character:WaitForChild("Humanoid")
-
-local function getClosestFreeDriverSeat()
-    local closestSeat = nil
-    local shortestDistance = math.huge
-
-    for _, seat in pairs(workspace:GetDescendants()) do
-        if seat:IsA("VehicleSeat") and not seat.Occupant then
-            local dist = (seat.Position - hrp.Position).Magnitude
-            if dist < shortestDistance then
-                shortestDistance = dist
-                closestSeat = seat
-            end
-        end
-    end
-
-    return closestSeat
-end
-
-local function enterAndDriveCar()
-    local seat = getClosestFreeDriverSeat()
-    if seat then
-        -- Teleporta acima do banco
-        hrp.CFrame = seat.CFrame + Vector3.new(0, 3, 0)
-        task.wait(0.1)
-        -- Senta o personagem (ativa controle do veículo)
-        humanoid.Sit = true
-        task.wait(0.3)
-        -- Move para dentro do banco (fixa posição)
-        hrp.CFrame = seat.CFrame
-        print("Você entrou no carro e pode dirigir agora.")
-    else
-        warn("Nenhum banco de motorista disponível.")
-    end
-end
-
-Tabs.Main:AddButton({
-    Title = "Entrar e dirigir carro mais próximo",
-    Description = "Teleporta e senta no banco para dirigir",
-    Callback = enterAndDriveCar
+-- Adiciona botão ao seu menu
+Tabs.Players:AddButton({
+    Title = "Auto Reviver",
+    Description = "Tenta reviver seu personagem se for médico",
+    Callback = tentarReviver
 })
