@@ -373,22 +373,69 @@ Tabs.Visual:AddToggle("Esp", {
 })
 
 local player = game.Players.LocalPlayer
+local hrp = player.Character:WaitForChild("HumanoidRootPart")
+local TweenService = game:GetService("TweenService")
 
--- Função que tenta reviver o próprio jogador (se permitido pelo jogo)
-local function tentarReviver()
-    local reviveEvent = game:GetService("ReplicatedStorage"):FindFirstChild("RevivePlayer")
+local autoFarmAtivo = false
 
-    if reviveEvent and reviveEvent:IsA("RemoteEvent") then
-        reviveEvent:FireServer(player.Character) -- envia seu próprio personagem
-        print("Tentando se reviver...")
-    else
-        warn("Evento de revive não encontrado.")
+-- Caminhar até uma posição
+local function moverPara(pos, tempo)
+    local tweenInfo = TweenInfo.new(tempo or 2, Enum.EasingStyle.Linear)
+    local goal = {CFrame = CFrame.new(pos)}
+    local tween = TweenService:Create(hrp, tweenInfo, goal)
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Detecta prompt na bancada
+local function encontrarPromptBalcao()
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") and obj.Parent and obj.Parent.Name:lower():find("lanche") then
+            return obj
+        end
     end
 end
 
--- Adiciona botão ao seu menu
-Tabs.Players:AddButton({
-    Title = "Auto Reviver",
-    Description = "Tenta reviver seu personagem se for médico",
-    Callback = tentarReviver
+-- Detecta marcador de entrega
+local function encontrarMarcadorEntrega()
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("BillboardGui") and v.Name:lower():find("entrega") then
+            local adornee = v.Adornee
+            if adornee then
+                return adornee.Position
+            end
+        end
+    end
+end
+
+-- Loop de Auto Farm
+task.spawn(function()
+    while true do
+        if autoFarmAtivo then
+            local prompt = encontrarPromptBalcao()
+            if prompt then
+                local pos = prompt.Parent.Position + Vector3.new(0, 2, 0)
+                moverPara(pos, 2)
+                fireproximityprompt(prompt)
+            end
+            wait(1)
+
+            local entregaPos = encontrarMarcadorEntrega()
+            if entregaPos then
+                moverPara(entregaPos + Vector3.new(0, 2, 0), 3)
+            end
+            wait(1.5)
+        end
+        task.wait(0.5)
+    end
+end)
+
+-- Toggle para ativar/desativar o Auto Farm
+Tabs.Players:AddToggle("ToggleAutoFarmLanche", {
+    Title = "Auto Farm Lanches",
+    Description = "Liga ou desliga o farm automático de entregas",
+    Default = false,
+    Callback = function(state)
+        autoFarmAtivo = state
+    end
 })
