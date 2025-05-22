@@ -8,7 +8,7 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
 	Name = "Dragon Menu | Ilha Bela v1",
 	Icon = 0,
-	LoadingTitle = "Carregando...",
+	LoadingTitle = "Loading...",
 	LoadingSubtitle = "by Vitor",
 	Theme = "Default",
 	ConfigurationSaving = {
@@ -19,20 +19,16 @@ local Window = Rayfield:CreateWindow({
 	KeySettings = {
 		Title = "Dragon Menu",
 		Subtitle = "Key System",
-		Note = "Key: #####",
+		Note = "Key: on Kwai @Vitoroficial",
 		FileName = "SiriusKey",
-		SaveKey = true,
-		Key = "Key_ilhabela"
+		SaveKey = false,
+		Key = "Menu_ilhabela"
 	}
 })
 
 -- Gui Tabs
 local mainTab = Window:CreateTab("Main", 4483362458)
 local playerTab = Window:CreateTab("Player", 6034996698)
-
---------------------------------
--- FUNCIONALIDADES MAIN TAB  --
---------------------------------
 
 -- Noclip
 mainTab:CreateToggle({
@@ -132,21 +128,17 @@ mainTab:CreateToggle({
 	end,
 })
 
-----------------------------
--- ESP (JOGADORES)        --
-----------------------------
-
 local espAtivado = false
 local connections = {}
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 playerTab:CreateToggle({
-	Name = "ESP (Nomes)",
+	Name = "ESP (Name)",
 	CurrentValue = false,
 	Flag = "Toggle_ESP",
 	Callback = function(enabled)
-		espAtivado = enabled
+		espAtivado = enabled 
 
 		local function criarESP(player)
 			if player == LocalPlayer or not espAtivado then return end
@@ -241,6 +233,139 @@ playerTab:CreateToggle({
 			end
 		end
 	end,
+})
+
+local espTags = {}
+
+local function createESP(player)
+    local character = player.Character
+    if not character then return end
+
+    local head = character:FindFirstChild("Head")
+    if not head then return end
+
+    -- Verifica se existe a palavra "staff" em algum TextLabel na Head
+    local hasStaffTag = false
+    for _, gui in pairs(head:GetChildren()) do
+        if gui:IsA("BillboardGui") then
+            for _, label in pairs(gui:GetChildren()) do
+                if label:IsA("TextLabel") and string.find(label.Text:lower(), "staff") then
+                    hasStaffTag = true
+                    break
+                end
+            end
+        end
+    end
+
+    if not hasStaffTag then return end
+
+    -- Criar um novo Billboard ESP
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ESP_Staff"
+    billboard.Adornee = head
+    billboard.Size = UDim2.new(0, 100, 0, 20)
+    billboard.StudsOffset = Vector3.new(0, 2, 0)
+    billboard.AlwaysOnTop = true
+
+    local text = Instance.new("TextLabel", billboard)
+    text.Size = UDim2.new(1, 0, 1, 0)
+    text.BackgroundTransparency = 1
+    text.Text = "STAFF"
+    text.TextColor3 = Color3.fromRGB(255, 0, 0)
+    text.TextStrokeTransparency = 0
+    text.Font = Enum.Font.SourceSansBold
+    text.TextScaled = true
+
+    billboard.Parent = head
+    espTags[player] = billboard
+end
+
+local function removeAllESP()
+    for player, gui in pairs(espTags) do
+        if gui and gui.Parent then
+            gui:Destroy()
+        end
+    end
+    espTags = {}
+end
+
+local function toggleEsp(enabled)
+    removeAllESP()
+    if enabled then
+        for _, player in pairs(game.Players:GetPlayers()) do
+            if player ~= game.Players.LocalPlayer then
+                createESP(player)
+            end
+            player.CharacterAdded:Connect(function()
+                wait(1)
+                createESP(player)
+            end)
+        end
+
+        game.Players.PlayerAdded:Connect(function(player)
+            player.CharacterAdded:Connect(function()
+                wait(1)
+                createESP(player)
+            end)
+        end)
+    end
+end
+
+-- Toggle UI
+playerTab:CreateToggle({
+    Name = "ESP (Staff)",
+    CurrentValue = false,
+    Flag = "Toggle_ESP_Staff",
+    Callback = function(enabled)
+        toggleEsp(enabled)
+    end
+})
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+local antiQuedaAtivo = false
+local humanoidConnection = nil
+
+-- Função que ativa/desativa o anti queda
+local function toggleAntiQueda(enabled)
+	antiQuedaAtivo = enabled
+
+	if humanoidConnection then
+		humanoidConnection:Disconnect()
+		humanoidConnection = nil
+	end
+
+	if enabled then
+		local humanoid = character:WaitForChild("Humanoid")
+
+		humanoidConnection = humanoid.StateChanged:Connect(function(oldState, newState)
+			if newState == Enum.HumanoidStateType.Freefall then
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+			end
+		end)
+	end
+end
+
+-- Reaplicar o anti-queda em respawn
+player.CharacterAdded:Connect(function(char)
+	character = char
+	if antiQuedaAtivo then
+		toggleAntiQueda(true)
+	end
+end)
+
+-- UI Toggle (com base no seu exemplo)
+playerTab:CreateToggle({
+	Name = "Anti falls",
+	CurrentValue = false,
+	Flag = "Toggle_Anti_Queda",
+	Callback = function(enabled)
+		toggleAntiQueda(enabled)
+	end
 })
 
 -- Carregar configurações salvas
