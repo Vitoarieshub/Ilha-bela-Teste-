@@ -128,6 +128,7 @@ mainTab:CreateToggle({
 	end,
 })
 
+-- ESP (Name)
 local espAtivado = false
 local connections = {}
 local Players = game:GetService("Players")
@@ -235,90 +236,88 @@ playerTab:CreateToggle({
 	end,
 })
 
+-- ESP (Staff)
 local espTags = {}
 
 local function createESP(player)
-    local character = player.Character
-    if not character then return end
+	local character = player.Character
+	if not character then return end
 
-    local head = character:FindFirstChild("Head")
-    if not head then return end
+	local head = character:FindFirstChild("Head")
+	if not head then return end
 
-    -- Verifica se existe a palavra "staff" em algum TextLabel na Head
-    local hasStaffTag = false
-    for _, gui in pairs(head:GetChildren()) do
-        if gui:IsA("BillboardGui") then
-            for _, label in pairs(gui:GetChildren()) do
-                if label:IsA("TextLabel") and string.find(label.Text:lower(), "staff") then
-                    hasStaffTag = true
-                    break
-                end
-            end
-        end
-    end
+	local hasStaffTag = false
+	for _, gui in pairs(head:GetChildren()) do
+		if gui:IsA("BillboardGui") then
+			for _, label in pairs(gui:GetChildren()) do
+				if label:IsA("TextLabel") and string.find(label.Text:lower(), "staff") then
+					hasStaffTag = true
+					break
+				end
+			end
+		end
+	end
 
-    if not hasStaffTag then return end
+	if not hasStaffTag then return end
 
-    -- Criar um novo Billboard ESP
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "ESP_Staff"
-    billboard.Adornee = head
-    billboard.Size = UDim2.new(0, 100, 0, 20)
-    billboard.StudsOffset = Vector3.new(0, 2, 0)
-    billboard.AlwaysOnTop = true
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "ESP_Staff"
+	billboard.Adornee = head
+	billboard.Size = UDim2.new(0, 100, 0, 20)
+	billboard.StudsOffset = Vector3.new(0, 2, 0)
+	billboard.AlwaysOnTop = true
 
-    local text = Instance.new("TextLabel", billboard)
-    text.Size = UDim2.new(1, 0, 1, 0)
-    text.BackgroundTransparency = 1
-    text.Text = "STAFF"
-    text.TextColor3 = Color3.fromRGB(255, 0, 0)
-    text.TextStrokeTransparency = 0
-    text.Font = Enum.Font.SourceSansBold
-    text.TextScaled = true
+	local text = Instance.new("TextLabel", billboard)
+	text.Size = UDim2.new(1, 0, 1, 0)
+	text.BackgroundTransparency = 1
+	text.Text = "STAFF"
+	text.TextColor3 = Color3.fromRGB(255, 0, 0)
+	text.TextStrokeTransparency = 0
+	text.Font = Enum.Font.SourceSansBold
+	text.TextScaled = true
 
-    billboard.Parent = head
-    espTags[player] = billboard
+	billboard.Parent = head
+	espTags[player] = billboard
 end
 
 local function removeAllESP()
-    for player, gui in pairs(espTags) do
-        if gui and gui.Parent then
-            gui:Destroy()
-        end
-    end
-    espTags = {}
+	for player, gui in pairs(espTags) do
+		if gui and gui.Parent then
+			gui:Destroy()
+		end
+	end
+	espTags = {}
 end
 
 local function toggleEsp(enabled)
-    removeAllESP()
-    if enabled then
-        for _, player in pairs(game.Players:GetPlayers()) do
-            if player ~= game.Players.LocalPlayer then
-                createESP(player)
-            end
-            player.CharacterAdded:Connect(function()
-                wait(1)
-                createESP(player)
-            end)
-        end
+	removeAllESP()
+	if enabled then
+		for _, player in pairs(game.Players:GetPlayers()) do
+			if player ~= game.Players.LocalPlayer then
+				createESP(player)
+			end
+			player.CharacterAdded:Connect(function()
+				wait(1)
+				createESP(player)
+			end)
+		end
 
-        game.Players.PlayerAdded:Connect(function(player)
-            player.CharacterAdded:Connect(function()
-                wait(1)
-                createESP(player)
-            end)
-        end)
-    end
+		game.Players.PlayerAdded:Connect(function(player)
+			player.CharacterAdded:Connect(function()
+				wait(1)
+				createESP(player)
+			end)
+		end)
+	end
 end
 
--- Toggle UI
 playerTab:CreateToggle({
-    Name = "ESP (Staff)",
-    CurrentValue = false,
-    Flag = "Toggle_ESP_Staff",
-    Callback = function(enabled)
-        toggleEsp(enabled)
-    end
+	Name = "ESP (Staff)",
+	CurrentValue = false,
+	Flag = "Toggle_ESP_Staff",
+	Callback = function(enabled)
+		toggleEsp(enabled)
+	end
 })
 
 -- Carregar configurações salvas
