@@ -124,85 +124,88 @@ local Toggle = AddToggle(Main, {
 })
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
-
+local velocidadeValor = 25
 local velocidadeAtivada = false
-local velocidadeValor = 25 -- valor inicial
+local loopVelocidade = nil
 
--- Slider de Velocidade
+-- Spoof de WalkSpeed
+local spoofedSpeed = 16
+
+-- Hook metatable
+local mt = getrawmetatable(game)
+setreadonly(mt, false)
+
+local oldIndex = mt.__index
+local oldNewIndex = mt.__newindex
+
+mt.__index = function(t, k)
+    if t:IsA("Humanoid") and k == "WalkSpeed" then
+        return spoofedSpeed
+    end
+    return oldIndex(t, k)
+end
+
+mt.__newindex = function(t, k, v)
+    if t:IsA("Humanoid") and k == "WalkSpeed" then
+        -- bloqueia scripts externos de mudar o valor
+        if not checkcaller() then
+            return
+        end
+        spoofedSpeed = v
+    end
+    return oldNewIndex(t, k, v)
+end
+
+-- Função para aplicar a velocidade
+local function aplicarVelocidade()
+    if loopVelocidade then loopVelocidade:Disconnect() end
+
+    loopVelocidade = RunService.Heartbeat:Connect(function()
+        if velocidadeAtivada then
+            local char = LocalPlayer.Character
+            local humanoid = char and char:FindFirstChildWhichIsA("Humanoid")
+            if humanoid and humanoid.WalkSpeed ~= velocidadeValor then
+                spoofedSpeed = velocidadeValor
+                humanoid.WalkSpeed = velocidadeValor
+            end
+        end
+    end)
+end
+
+-- Interface
 AddSlider(Main, {
     Name = "Velocidade",
     MinValue = 16,
-    MaxValue = 180,
+    MaxValue = 250,
     Default = 25,
     Increase = 1,
     Callback = function(Value)
         velocidadeValor = Value
-        if velocidadeAtivada then
-            local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                humanoid.WalkSpeed = velocidadeValor
-            end
-        end
     end
 })
 
--- Toggle para ativar/desativar a velocidade
 AddToggle(Main, {
-    Name = "Velocidade",
+    Name = "Velocidade (Bypass)",
     Default = false,
     Callback = function(Value)
         velocidadeAtivada = Value
-        local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.WalkSpeed = Value and velocidadeValor or 16
-        end
-    end
-})
 
-local jumpAtivado = false
-local jumpPowerSelecionado = 25
-local jumpPowerPadrao = 50  -- Valor padrão do JumpPower do Roblox
-
--- Função para aplicar ou restaurar altura do pulo
-local function aplicarJumpPower()
-    local player = game.Players.LocalPlayer
-    local character = player.Character or player.CharacterAdded:Wait()
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.UseJumpPower = true
-        if jumpAtivado then
-            humanoid.JumpPower = jumpPowerSelecionado
+        if Value then
+            aplicarVelocidade()
         else
-            humanoid.JumpPower = jumpPowerPadrao
+            if loopVelocidade then
+                loopVelocidade:Disconnect()
+                loopVelocidade = nil
+            end
+            local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local humanoid = char:FindFirstChildWhichIsA("Humanoid")
+            if humanoid then
+                spoofedSpeed = 16
+                humanoid.WalkSpeed = 16
+            end
         end
-    end
-end
-
--- Slider de Altura do Pulo
-AddSlider(Main, {
-    Name = "Altura do pulo",
-    MinValue = 10,
-    MaxValue = 300,
-    Default = 25,
-    Increase = 1,
-    Callback = function(Value)
-        jumpPowerSelecionado = Value
-        if jumpAtivado then
-            aplicarJumpPower()
-        end
-    end
-})
-
--- Toggle para ativar/desativar altura do pulo
-AddToggle(Main, {
-    Name = "Altura do pulo",
-    Default = false,
-    Callback = function(Value)
-        jumpAtivado = Value
-        aplicarJumpPower()
     end
 })
 
