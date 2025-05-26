@@ -261,13 +261,13 @@ AddToggle(Visuais, {
                             local distancia = (LocalPlayer.Character.HumanoidRootPart.Position - char.HumanoidRootPart.Position).Magnitude
                             texto.Text = player.Name .. " [" .. math.floor(distancia) .. "m]"
 
-                            -- Transparência dinâmica entre 50m e 200m
+                            -- Lógica de transparência: visível até 50m, desaparece até 200m, invisível após isso
                             if distancia <= 50 then
                                 texto.TextTransparency = 0
                             elseif distancia >= 200 then
                                 texto.TextTransparency = 1
                             else
-                                texto.TextTransparency = math.clamp((distancia - 50) / 150, 0, 1)
+                                texto.TextTransparency = (distancia - 50) / 150
                             end
                         end
                     end
