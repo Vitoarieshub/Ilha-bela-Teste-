@@ -133,7 +133,7 @@ local velocidadeValor = 25 -- valor inicial
 AddSlider(Main, {
     Name = "Velocidade",
     MinValue = 16,
-    MaxValue = 250,
+    MaxValue = 180,
     Default = 25,
     Increase = 1,
     Callback = function(Value)
@@ -185,7 +185,7 @@ end
 AddSlider(Main, {
     Name = "Altura do pulo",
     MinValue = 10,
-    MaxValue = 900,
+    MaxValue = 300,
     Default = 25,
     Increase = 1,
     Callback = function(Value)
@@ -206,96 +206,94 @@ AddToggle(Main, {
     end
 })
 
+-- Variáveis de controle
 local espAtivado = false
 local connections = {}
 
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Função para criar ESP
+local function criarESP(player)
+    if player == LocalPlayer then return end
+
+    task.spawn(function()
+        while espAtivado do
+            local char = player.Character
+            local head = char and char:FindFirstChild("Head")
+            local humanoid = char and char:FindFirstChild("Humanoid")
+
+            if char and head and humanoid and humanoid.Health > 0 then
+                local esp = head:FindFirstChild("ESP")
+                if not esp then
+                    esp = Instance.new("BillboardGui")
+                    esp.Name = "ESP"
+                    esp.Adornee = head
+                    esp.Size = UDim2.new(0, 70, 0, 18) -- menor tamanho
+                    esp.StudsOffset = Vector3.new(0, 1.3, 0) -- mais próximo da cabeça
+                    esp.AlwaysOnTop = true
+
+                    local text = Instance.new("TextLabel")
+                    text.Name = "Texto"
+                    text.Size = UDim2.new(1, 0, 1, 0)
+                    text.BackgroundTransparency = 1
+                    text.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    text.TextSize = 10 -- menor texto
+                    text.TextScaled = false
+                    text.Font = Enum.Font.Gotham
+                    text.TextStrokeTransparency = 0.4
+                    text.TextStrokeColor3 = Color3.new(0, 0, 0)
+                    text.Parent = esp
+
+                    esp.Parent = head
+
+                    humanoid.Died:Connect(function()
+                        if esp then esp:Destroy() end
+                    end)
+                end
+
+                local texto = esp:FindFirstChild("Texto")
+                if texto and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("HumanoidRootPart") then
+                    local distancia = (LocalPlayer.Character.HumanoidRootPart.Position - char.HumanoidRootPart.Position).Magnitude
+                    texto.Text = player.Name .. " - " .. math.floor(distancia) .. "m"
+                end
+            end
+            wait(0.3)
+        end
+    end)
+end
+
+-- Monitorar jogadores
+local function monitorarPlayer(player)
+    if connections[player] then
+        connections[player]:Disconnect()
+    end
+
+    connections[player] = player.CharacterAdded:Connect(function()
+        wait(1)
+        if espAtivado then
+            criarESP(player)
+        end
+    end)
+
+    criarESP(player)
+end
+
+-- Toggle para ativar/desativar o ESP
 AddToggle(Visuais, {
     Name = "ESP Nome",
     Default = false,
-    Callback = function(state)
-        espAtivado = state
-
-        local Players = game:GetService("Players")
-        local LocalPlayer = Players.LocalPlayer
-
-        local function criarESP(player)
-            if player == LocalPlayer or not espAtivado then return end
-
-            task.spawn(function()
-                while espAtivado do
-                    local char = player.Character
-                    local head = char and char:FindFirstChild("Head")
-                    local humanoid = char and char:FindFirstChild("Humanoid")
-
-                    if char and head and humanoid and humanoid.Health > 0 then
-                        local esp = head:FindFirstChild("ESP")
-                        if not esp then
-                            esp = Instance.new("BillboardGui")
-                            esp.Name = "ESP"
-                            esp.Adornee = head
-                            esp.Size = UDim2.new(0, 80, 0, 20)
-                            esp.StudsOffset = Vector3.new(0, 1.5, 0)
-                            esp.AlwaysOnTop = true
-
-                            local text = Instance.new("TextLabel")
-                            text.Name = "Texto"
-                            text.Size = UDim2.new(1, 0, 1, 0)
-                            text.BackgroundTransparency = 1
-                            text.TextColor3 = Color3.new(1, 1, 1)
-                            text.TextSize = 12
-                            text.TextScaled = false
-                            text.Font = Enum.Font.Gotham
-                            text.TextStrokeTransparency = 0.5
-                            text.TextStrokeColor3 = Color3.new(0, 0, 0)
-                            text.Parent = esp
-
-                            esp.Parent = head
-
-                            humanoid.Died:Connect(function()
-                                if esp then esp:Destroy() end
-                            end)
-                        end
-
-                        local texto = esp:FindFirstChild("Texto")
-                        if texto and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("HumanoidRootPart") then
-                            local distancia = (LocalPlayer.Character.HumanoidRootPart.Position - char.HumanoidRootPart.Position).Magnitude
-                            texto.Text = player.Name .. " [" .. math.floor(distancia) .. "m]"
-
-                            if distancia <= 50 then
-                                texto.TextTransparency = 0
-                            elseif distancia >= 200 then
-                                texto.TextTransparency = 1
-                            else
-                                texto.TextTransparency = (distancia - 50) / 150
-                            end
-                        end
-                    end
-                    task.wait(0.3)
-                end
-            end)
-        end
-
-        local function monitorarPlayer(player)
-            if connections[player] then
-                connections[player]:Disconnect()
-            end
-
-            connections[player] = player.CharacterAdded:Connect(function()
-                task.wait(1)
-                if espAtivado then
-                    criarESP(player)
-                end
-            end)
-
-            criarESP(player)
-        end
+    Callback = function(Value)
+        espAtivado = Value
 
         if espAtivado then
             for _, player in ipairs(Players:GetPlayers()) do
                 monitorarPlayer(player)
             end
 
-            connections["PlayerAdded"] = Players.PlayerAdded:Connect(monitorarPlayer)
+            connections["PlayerAdded"] = Players.PlayerAdded:Connect(function(player)
+                monitorarPlayer(player)
+            end)
         else
             for _, player in ipairs(Players:GetPlayers()) do
                 local char = player.Character
@@ -303,7 +301,9 @@ AddToggle(Visuais, {
                     local head = char:FindFirstChild("Head")
                     if head then
                         local esp = head:FindFirstChild("ESP")
-                        if esp then esp:Destroy() end
+                        if esp then
+                            esp:Destroy()
+                        end
                     end
                 end
                 if connections[player] then
@@ -455,11 +455,10 @@ local function gerarListaDeJogadores()
 	return nomes
 end
 
--- Atualiza o dropdown manualmente
+-- Atualiza automaticamente o dropdown
 local function atualizarListaDropdown()
 	local nomesAtuais = gerarListaDeJogadores()
 
-	-- Limpa a seleção se o jogador saiu
 	if jogadorSelecionado and not Players:FindFirstChild(jogadorSelecionado.Name) then
 		jogadorSelecionado = nil
 	end
@@ -516,14 +515,15 @@ dropdownRef = AddDropdown(Player, {
 	end
 })
 
--- Botão manual para atualizar a lista
-AddButton(Player, {
-	Name = "Atualizar Lista de Jogadores",
-	Callback = function()
-		atualizarListaDropdown()
-		print("Lista de jogadores atualizada manualmente.")
+-- Atualização automática da lista quando jogadores entram ou saem
+Players.PlayerAdded:Connect(atualizarListaDropdown)
+Players.PlayerRemoving:Connect(function(player)
+	if jogadorSelecionado == player then
+		pararObservar()
+		jogadorSelecionado = nil
 	end
-})
+	atualizarListaDropdown()
+end)
 
 -- Toggle para observar
 AddToggle(Player, {
@@ -542,11 +542,3 @@ AddToggle(Player, {
 		end
 	end
 })
-
--- Remove observação se o jogador sair
-Players.PlayerRemoving:Connect(function(player)
-	if jogadorSelecionado == player then
-		pararObservar()
-		jogadorSelecionado = nil
-	end
-end)
