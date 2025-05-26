@@ -210,7 +210,7 @@ local espAtivado = false
 local connections = {}
 
 AddToggle(Visuais, {
-    Name = "ESP nome",
+    Name = "ESP Nome",
     Default = false,
     Callback = function(state)
         espAtivado = state
@@ -261,8 +261,14 @@ AddToggle(Visuais, {
                             local distancia = (LocalPlayer.Character.HumanoidRootPart.Position - char.HumanoidRootPart.Position).Magnitude
                             texto.Text = player.Name .. " [" .. math.floor(distancia) .. "m]"
 
-                            -- Totalmente visível até 50m, invisível após
-                            texto.TextTransparency = distancia <= 50 and 0 or 1
+                            -- Transparência dinâmica entre 50m e 200m
+                            if distancia <= 50 then
+                                texto.TextTransparency = 0
+                            elseif distancia >= 200 then
+                                texto.TextTransparency = 1
+                            else
+                                texto.TextTransparency = math.clamp((distancia - 50) / 150, 0, 1)
+                            end
                         end
                     end
                     task.wait(0.3)
