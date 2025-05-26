@@ -206,139 +206,21 @@ AddToggle(Main, {
     end
 })
 
--- Variáveis de controle
 local espAtivado = false
 local connections = {}
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
--- Função para criar ESP
-local function criarESP(player)
-    if player == LocalPlayer then return end
-
-    task.spawn(function()
-        while espAtivado do
-            local char = player.Character
-            local head = char and char:FindFirstChild("Head")
-            local humanoid = char and char:FindFirstChild("Humanoid")
-
-            if char and head and humanoid and humanoid.Health > 0 then
-                local esp = head:FindFirstChild("ESP")
-                if not esp then
-                    esp = Instance.new("BillboardGui")
-                    esp.Name = "ESP"
-                    esp.Adornee = head
-                    esp.Size = UDim2.new(0, 150, 0, 50)
-                    esp.StudsOffset = Vector3.new(0, 2, 0)
-                    esp.AlwaysOnTop = true
-
-                    local text = Instance.new("TextLabel")
-                    text.Name = "Texto"
-                    text.Size = UDim2.new(1, 0, 1, 0)
-                    text.BackgroundTransparency = 1
-                    text.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    text.TextSize = 14
-                    text.TextScaled = false
-                    text.Font = Enum.Font.GothamBold
-                    text.TextStrokeTransparency = 0.4
-                    text.TextStrokeColor3 = Color3.new(0, 0, 0)
-                    text.Parent = esp
-
-                    esp.Parent = head
-
-                    humanoid.Died:Connect(function()
-                        if esp then esp:Destroy() end
-                    end)
-                end
-
-                local texto = esp:FindFirstChild("Texto")
-                if texto and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("HumanoidRootPart") then
-                    local distancia = (LocalPlayer.Character.HumanoidRootPart.Position - char.HumanoidRootPart.Position).Magnitude
-                    texto.Text = player.Name .. " - " .. math.floor(distancia) .. "m"
-                end
-            end
-            wait(0.3)
-        end
-    end)
-end
-
--- Monitorar jogadores
-local function monitorarPlayer(player)
-    if connections[player] then
-        connections[player]:Disconnect()
-    end
-
-    connections[player] = player.CharacterAdded:Connect(function()
-        wait(1)
-        if espAtivado then
-            criarESP(player)
-        end
-    end)
-
-    criarESP(player)
-end
-
--- Toggle para ativar/desativar o ESP
 AddToggle(Visuais, {
     Name = "ESP nome",
     Default = false,
-    Callback = function(Value)
-        espAtivado = Value
-
-        if espAtivado then
-            for _, player in ipairs(Players:GetPlayers()) do
-                monitorarPlayer(player)
-            end
-
-            connections["PlayerAdded"] = Players.PlayerAdded:Connect(function(player)
-                monitorarPlayer(player)
-            end)
-        else
-            for _, player in ipairs(Players:GetPlayers()) do
-                local char = player.Character
-                if char then
-                    local head = char:FindFirstChild("Head")
-                    if head then
-                        local esp = head:FindFirstChild("ESP")
-                        if esp then
-                            esp:Destroy()
-                        end
-                    end
-                end
-                if connections[player] then
-                    connections[player]:Disconnect()
-                    connections[player] = nil
-                end
-            end
-
-            if connections["PlayerAdded"] then
-                connections["PlayerAdded"]:Disconnect()
-                connections["PlayerAdded"] = nil
-            end
-        end
-    end
-})
-
-Toggle para ativar/desativar o ESP
-AddToggle(Visuais, {
-    Name = "ESP nome",
-    Default = false,
-    Callback = function(Value)
-        espAtivado = Value
-        -- Variável para armazenar o estado do ESP
-local espAtivado = false
-local connections = {}
+    Callback = function(state)
         espAtivado = state
+
         local Players = game:GetService("Players")
         local LocalPlayer = Players.LocalPlayer
 
-        -- Função para criar ESP
         local function criarESP(player)
-            if player == LocalPlayer then return end
-            if not espAtivado then return end
+            if player == LocalPlayer or not espAtivado then return end
 
-            -- Atualização contínua
             task.spawn(function()
                 while espAtivado do
                     local char = player.Character
@@ -351,21 +233,20 @@ local connections = {}
                             esp = Instance.new("BillboardGui")
                             esp.Name = "ESP"
                             esp.Adornee = head
-                            esp.Size = UDim2.new(0, 150, 0, 50)
-                            esp.StudsOffset = Vector3.new(0, 2, 0)
+                            esp.Size = UDim2.new(0, 80, 0, 20)
+                            esp.StudsOffset = Vector3.new(0, 1.5, 0)
                             esp.AlwaysOnTop = true
 
                             local text = Instance.new("TextLabel")
                             text.Name = "Texto"
                             text.Size = UDim2.new(1, 0, 1, 0)
                             text.BackgroundTransparency = 1
-                            text.TextColor3 = Color3.fromRGB(255, 255, 255)
-                            text.TextSize = 18
-                            text.TextScaled = true
-                            text.Font = Enum.Font.GothamBold
-                            text.TextStrokeTransparency = 0.4
+                            text.TextColor3 = Color3.new(1, 1, 1)
+                            text.TextSize = 12
+                            text.TextScaled = false
+                            text.Font = Enum.Font.Gotham
+                            text.TextStrokeTransparency = 0.5
                             text.TextStrokeColor3 = Color3.new(0, 0, 0)
-                            text.TextTransparency = 0.2
                             text.Parent = esp
 
                             esp.Parent = head
@@ -378,23 +259,24 @@ local connections = {}
                         local texto = esp:FindFirstChild("Texto")
                         if texto and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("HumanoidRootPart") then
                             local distancia = (LocalPlayer.Character.HumanoidRootPart.Position - char.HumanoidRootPart.Position).Magnitude
-                            texto.Text = player.Name .. " " .. math.floor(distancia)
-                            texto.TextTransparency = math.clamp(distancia / 150, 0.2, 0.9)
+                            texto.Text = player.Name .. " [" .. math.floor(distancia) .. "m]"
+
+                            -- Totalmente visível até 50m, invisível após
+                            texto.TextTransparency = distancia <= 50 and 0 or 1
                         end
                     end
-                    wait(0.3)
+                    task.wait(0.3)
                 end
             end)
         end
 
-        -- Função para monitorar respawns e mudanças
         local function monitorarPlayer(player)
             if connections[player] then
                 connections[player]:Disconnect()
             end
 
             connections[player] = player.CharacterAdded:Connect(function()
-                wait(1)
+                task.wait(1)
                 if espAtivado then
                     criarESP(player)
                 end
@@ -408,20 +290,15 @@ local connections = {}
                 monitorarPlayer(player)
             end
 
-            connections["PlayerAdded"] = Players.PlayerAdded:Connect(function(player)
-                monitorarPlayer(player)
-            end)
+            connections["PlayerAdded"] = Players.PlayerAdded:Connect(monitorarPlayer)
         else
-            -- Desativar ESP
             for _, player in ipairs(Players:GetPlayers()) do
                 local char = player.Character
                 if char then
                     local head = char:FindFirstChild("Head")
                     if head then
                         local esp = head:FindFirstChild("ESP")
-                        if esp then
-                            esp:Destroy()
-                        end
+                        if esp then esp:Destroy() end
                     end
                 end
                 if connections[player] then
