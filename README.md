@@ -33,9 +33,9 @@ MinimizeButton({
 })
 
 -- Criação da aba principal
-local Main = MakeTab({Name = "Principal"})
+local Main = MakeTab({Name = "Jogador"})
 local Visuais = MakeTab({Name = "Visuais"})
-local Player = MakeTab({Name = "Jogadores"})
+local Player = MakeTab({Name = "Auxílios"})
 
 
 -- Notificação inicial
@@ -121,6 +121,199 @@ local Toggle = AddToggle(Main, {
     Callback = function(Value)
         toggleInfiniteJump(Value)
     end
+})
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local velocidadeValor = 25
+local velocidadeAtivada = false
+local loopVelocidade = nil
+
+-- Spoof de WalkSpeed
+local spoofedSpeed = 16
+
+-- Hook metatable
+local mt = getrawmetatable(game)
+setreadonly(mt, false)
+
+local oldIndex = mt.__index
+local oldNewIndex = mt.__newindex
+
+mt.__index = function(t, k)
+    if t:IsA("Humanoid") and k == "WalkSpeed" then
+        return spoofedSpeed
+    end
+    return oldIndex(t, k)
+end
+
+mt.__newindex = function(t, k, v)
+    if t:IsA("Humanoid") and k == "WalkSpeed" then
+        -- bloqueia scripts externos de mudar o valor
+        if not checkcaller() then
+            return
+        end
+        spoofedSpeed = v
+    end
+    return oldNewIndex(t, k, v)
+end
+
+-- Função para aplicar a velocidade
+local function aplicarVelocidade()
+    if loopVelocidade then loopVelocidade:Disconnect() end
+
+    loopVelocidade = RunService.Heartbeat:Connect(function()
+        if velocidadeAtivada then
+            local char = LocalPlayer.Character
+            local humanoid = char and char:FindFirstChildWhichIsA("Humanoid")
+            if humanoid and humanoid.WalkSpeed ~= velocidadeValor then
+                spoofedSpeed = velocidadeValor
+                humanoid.WalkSpeed = velocidadeValor
+            end
+        end
+    end)
+end
+
+-- Interface
+AddSlider(Main, {
+    Name = "Velocidade",
+    MinValue = 16,
+    MaxValue = 180,
+    Default = 16,
+    Increase = 1,
+    Callback = function(Value)
+        velocidadeValor = Value
+    end
+})
+
+AddToggle(Main, {
+    Name = "Velocidade (Bypass)",
+    Default = false,
+    Callback = function(Value)
+        velocidadeAtivada = Value
+
+        if Value then
+            aplicarVelocidade()
+        else
+            if loopVelocidade then
+                loopVelocidade:Disconnect()
+                loopVelocidade = nil
+            end
+            local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local humanoid = char:FindFirstChildWhichIsA("Humanoid")
+            if humanoid then
+                spoofedSpeed = 16
+                humanoid.WalkSpeed = 16
+            end
+        end
+    end
+})
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local jogadorSelecionado = nil
+local observando = false
+local observarConnection = nil
+local dropdownRef = nil
+
+-- Gera a lista atual de jogadores válidos
+local function gerarListaDeJogadores()
+	local nomes = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer then
+			table.insert(nomes, player.Name)
+		end
+	end
+	return nomes
+end
+
+-- Atualiza automaticamente o dropdown
+local function atualizarListaDropdown()
+	local nomesAtuais = gerarListaDeJogadores()
+
+	if jogadorSelecionado and not Players:FindFirstChild(jogadorSelecionado.Name) then
+		jogadorSelecionado = nil
+	end
+
+	if dropdownRef and dropdownRef.UpdateOptions then
+		dropdownRef:UpdateOptions(nomesAtuais)
+	end
+end
+
+-- Observação contínua
+local function observarJogador(jogador)
+	if observarConnection then
+		observarConnection:Disconnect()
+	end
+
+	local function setarCamera()
+		if jogador.Character and jogador.Character:FindFirstChild("Humanoid") then
+			workspace.CurrentCamera.CameraSubject = jogador.Character.Humanoid
+			print("Observando " .. jogador.Name)
+		end
+	end
+
+	setarCamera()
+
+	observarConnection = jogador.CharacterAdded:Connect(function()
+		wait(1)
+		if observando then
+			setarCamera()
+		end
+	end)
+end
+
+-- Parar observação
+local function pararObservar()
+	if observarConnection then
+		observarConnection:Disconnect()
+		observarConnection = nil
+	end
+	observando = false
+
+	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+		workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
+	end
+
+	print("Observação desativada.")
+end
+
+-- Criação do dropdown inicial
+dropdownRef = AddDropdown(Main, {
+	Name = "Selecionar jogador para observar",
+	Options = gerarListaDeJogadores(),
+	Callback = function(valorSelecionado)
+		jogadorSelecionado = Players:FindFirstChild(valorSelecionado)
+	end
+})
+
+-- Atualização automática da lista quando jogadores entram ou saem
+Players.PlayerAdded:Connect(atualizarListaDropdown)
+Players.PlayerRemoving:Connect(function(player)
+	if jogadorSelecionado == player then
+		pararObservar()
+		jogadorSelecionado = nil
+	end
+	atualizarListaDropdown()
+end)
+
+-- Toggle para observar
+AddToggle(Main, {
+	Name = "Observar",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			if jogadorSelecionado then
+				observando = true
+				observarJogador(jogadorSelecionado)
+			else
+				warn("Nenhum jogador selecionado.")
+			end
+		else
+			pararObservar()
+		end
+	end
 })
 
 -- Variáveis de controle
@@ -350,112 +543,5 @@ AddToggle(Visuais, {
 	Default = false,
 	Callback = function(Value)
 		toggleEsp(Value)
-	end
-})
-
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
-local jogadorSelecionado = nil
-local observando = false
-local observarConnection = nil
-local dropdownRef = nil
-
--- Gera a lista atual de jogadores válidos
-local function gerarListaDeJogadores()
-	local nomes = {}
-	for _, player in ipairs(Players:GetPlayers()) do
-		if player ~= LocalPlayer then
-			table.insert(nomes, player.Name)
-		end
-	end
-	return nomes
-end
-
--- Atualiza automaticamente o dropdown
-local function atualizarListaDropdown()
-	local nomesAtuais = gerarListaDeJogadores()
-
-	if jogadorSelecionado and not Players:FindFirstChild(jogadorSelecionado.Name) then
-		jogadorSelecionado = nil
-	end
-
-	if dropdownRef and dropdownRef.UpdateOptions then
-		dropdownRef:UpdateOptions(nomesAtuais)
-	end
-end
-
--- Observação contínua
-local function observarJogador(jogador)
-	if observarConnection then
-		observarConnection:Disconnect()
-	end
-
-	local function setarCamera()
-		if jogador.Character and jogador.Character:FindFirstChild("Humanoid") then
-			workspace.CurrentCamera.CameraSubject = jogador.Character.Humanoid
-			print("Observando " .. jogador.Name)
-		end
-	end
-
-	setarCamera()
-
-	observarConnection = jogador.CharacterAdded:Connect(function()
-		wait(1)
-		if observando then
-			setarCamera()
-		end
-	end)
-end
-
--- Parar observação
-local function pararObservar()
-	if observarConnection then
-		observarConnection:Disconnect()
-		observarConnection = nil
-	end
-	observando = false
-
-	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-		workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
-	end
-
-	print("Observação desativada.")
-end
-
--- Criação do dropdown inicial
-dropdownRef = AddDropdown(Player, {
-	Name = "Selecionar jogador para observar",
-	Options = gerarListaDeJogadores(),
-	Callback = function(valorSelecionado)
-		jogadorSelecionado = Players:FindFirstChild(valorSelecionado)
-	end
-})
-
--- Atualização automática da lista quando jogadores entram ou saem
-Players.PlayerAdded:Connect(atualizarListaDropdown)
-Players.PlayerRemoving:Connect(function(player)
-	if jogadorSelecionado == player then
-		pararObservar()
-		jogadorSelecionado = nil
-	end
-	atualizarListaDropdown()
-end)
-
--- Toggle para observar
-AddToggle(Player, {
-	Name = "Observar",
-	Default = false,
-	Callback = function(Value)
-		if Value then
-			if jogadorSelecionado then
-				observando = true
-				observarJogador(jogadorSelecionado)
-			else
-				warn("Nenhum jogador selecionado.")
-			end
-		else
-			pararObservar()
-		end
 	end
 })
