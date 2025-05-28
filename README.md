@@ -34,7 +34,7 @@ MinimizeButton({
 
 -- Criação da aba principal
 local Main = MakeTab({Name = "Geral"})
-local player  = MakeTab({Name = "Jogador"})
+local Player  = MakeTab({Name = "Jogador"})
 local Visual = MakeTab({Name = "Esp"})
 
 -- Notificação inicial
@@ -282,7 +282,7 @@ local function monitorarPlayer(player)
 end
 
 -- Toggle para ativar/desativar o ESP
-AddToggle(Visuais, {
+AddToggle(Visual, {
     Name = "ESP Nome",
     Default = false,
     Callback = function(Value)
@@ -430,7 +430,7 @@ local function toggleEsp(enabled)
 end
 
 -- Botão na interface
-AddToggle(Visuais, {
+AddToggle(Visual, {
 	Name = "ESP STAFF",
 	Default = false,
 	Callback = function(Value)
@@ -438,124 +438,92 @@ AddToggle(Visuais, {
 	end
 })
 
-local fovAtivado = false
-local fovValor = 70 -- valor padrão inicial
-local fovPadrao = 70 -- valor para restaurar quando desativar
-
--- Função para aplicar o FOV
-local function aplicarFov()
-    local camera = workspace.CurrentCamera
-    if camera then
-        if fovAtivado then
-            camera.FieldOfView = fovValor
-        else
-            camera.FieldOfView = fovPadrao
-        end
-    end
-end
-
--- Atualiza FOV quando o personagem respawnar
-game.Players.LocalPlayer.CharacterAdded:Connect(function()
-    wait(0.5)
-    aplicarFov()
-end)
-
--- Slider para ajustar o FOV
-AddSlider(Visuais, {
-    Name = "Campo de visão",
-    MinValue = 16,
-    MaxValue = 120,
-    Default = fovValor,
-    Increase = 1,
-    Callback = function(Value)
-        fovValor = Value
-        aplicarFov()
-    end
-})
-
--- Toggle para ativar/desativar o FOV
-AddToggle(Visuais, {
-    Name = "Campo de visão",
-    Default = false,
-    Callback = function(Value)
-        fovAtivado = Value
-        aplicarFov()
-    end
-})
-
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
 
+local playerName = ""
 local jogadorSelecionado = nil
 local observando = false
 local observarConnection = nil
+local teleportLoopConnection = nil
+local teleportando = false
+local dropdownRef = nil
 
--- Função para observar o jogador
-local function observarJogador(jogador)
-	if observarConnection then
-		observarConnection:Disconnect()
-	end
-
-	local function setarCamera()
-		if jogador.Character and jogador.Character:FindFirstChild("Humanoid") then
-			workspace.CurrentCamera.CameraSubject = jogador.Character.Humanoid
-			print("Observando: " .. jogador.Name)
+-- Função para encontrar jogador pelo nome digitado (busca parcial)
+local function encontrarJogador(nome)
+	local lowerName = nome:lower()
+	for _, player in pairs(Players:GetPlayers()) do
+		if player.Name:lower():sub(1, #lowerName) == lowerName then
+			return player
 		end
 	end
-
-	setarCamera()
-
-	observarConnection = jogador.CharacterAdded:Connect(function()
-		task.wait(1)
-		if observando then
-			setarCamera()
-		end
-	end)
+	return nil
 end
 
--- Função para parar de observar
+-- Caixa de texto para digitar nome do jogador
+AddTextBox(Player, {
+	Name = "Digite o nome do jogador",
+	Default = "",
+	Placeholder = "Nome do jogador aqui...",
+	Callback = function(text)
+		playerName = text
+		jogadorSelecionado = encontrarJogador(playerName)
+	end
+})
+
+-- Parar observação
 local function pararObservar()
 	if observarConnection then
 		observarConnection:Disconnect()
 		observarConnection = nil
 	end
 	observando = false
-
 	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
 		workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
 	end
-
 	print("Observação desativada.")
 end
 
--- Caixa de texto para digitar o nome do jogador
-AddTextbox(player, {
-	Name = "Digitar ó nome do Jogador",
-	Default = "",
-	TextDisappear = false,
-	Callback = function(nome)
-		local player = Players:FindFirstChild(nome)
-		if player and player ~= LocalPlayer then
-			jogadorSelecionado = player
-			print("Jogador selecionado: " .. player.Name)
-		else
-			warn("Jogador não encontrado ou é você.")
-			jogadorSelecionado = nil
-		end
+-- Iniciar observação
+local function iniciarObservar(jogador)
+	if not jogador or jogador == LocalPlayer then
+		warn("Jogador inválido para observar.")
+		return
 	end
-})
 
--- Toggle para ativar/desativar observação
-AddToggle(player, {
-	Name = "Observar Jogador",
+	observando = true
+
+	if not jogador.Character or not jogador.Character:FindFirstChild("Humanoid") then
+		warn("Personagem do jogador não está disponível.")
+		return
+	end
+
+	workspace.CurrentCamera.CameraSubject = jogador.Character.Humanoid
+	print("Observando " .. jogador.Name)
+
+	observarConnection = jogador.CharacterAdded:Connect(function()
+		wait(1)
+		if observando then
+			if jogador.Character and jogador.Character:FindFirstChild("Humanoid") then
+				workspace.CurrentCamera.CameraSubject = jogador.Character.Humanoid
+				print("Continuando observação após respawn.")
+			end
+		end
+	end)
+end
+
+-- Toggle para observar
+AddToggle(Player, {
+	Name = "Observar",
 	Default = false,
 	Callback = function(Value)
+		jogadorSelecionado = encontrarJogador(playerName)
 		if Value then
 			if jogadorSelecionado then
-				observando = true
-				observarJogador(jogadorSelecionado)
+				iniciarObservar(jogadorSelecionado)
 			else
-				warn("Digite um nome de jogador válido primeiro.")
+				warn("Jogador não encontrado para observar.")
 			end
 		else
 			pararObservar()
@@ -563,10 +531,67 @@ AddToggle(player, {
 	end
 })
 
--- Parar observação se o jogador sair
-Players.PlayerRemoving:Connect(function(player)
-	if jogadorSelecionado == player then
-		pararObservar()
-		jogadorSelecionado = nil
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local playerName = ""
+local jogadorSelecionado = nil
+
+-- Função para encontrar jogador pelo nome digitado (busca parcial)
+local function encontrarJogador(nome)
+	local lowerName = nome:lower()
+	for _, player in pairs(Players:GetPlayers()) do
+		if player.Name:lower():sub(1, #lowerName) == lowerName then
+			return player
+		end
 	end
-end)
+	return nil
+end
+
+-- Função para verificar e exibir o dinheiro do jogador
+local function mostrarDinheiro(jogador)
+	if not jogador then
+		warn("Jogador não encontrado.")
+		return
+	end
+
+	local leaderstats = jogador:FindFirstChild("leaderstats")
+	if leaderstats then
+		local dinheiro = leaderstats:FindFirstChild("Money") or leaderstats:FindFirstChild("Dinheiro") or leaderstats:FindFirstChild("Cash")
+		if dinheiro and dinheiro:IsA("IntValue") then
+			print(jogador.Name .. " tem R$" .. dinheiro.Value)
+			MakeNotifi({
+				Title = "Dinheiro Encontrado",
+				Text = jogador.Name .. " tem R$" .. dinheiro.Value,
+				Time = 5
+			})
+		else
+			warn("Esse jogador não possui valor de dinheiro visível.")
+			MakeNotifi({
+				Title = "Erro",
+				Text = "Jogador sem valor de dinheiro detectável.",
+				Time = 5
+			})
+		end
+	else
+		warn("leaderstats não encontrado no jogador.")
+		MakeNotifi({
+			Title = "Erro",
+			Text = "O jogador não tem leaderstats.",
+			Time = 5
+		})
+	end
+end
+
+-- Caixa de texto para digitar o nome do jogador e exibir dinheiro
+AddTextBox(Player, {
+	Name = "Ver Dinheiro do Jogador",
+	Default = "",
+	Placeholder = "Digite o nome aqui...",
+	Callback = function(text)
+		playerName = text
+		jogadorSelecionado = encontrarJogador(playerName)
+		mostrarDinheiro(jogadorSelecionado)
+	end
+})
+
