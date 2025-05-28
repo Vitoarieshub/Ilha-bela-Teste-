@@ -33,8 +33,9 @@ MinimizeButton({
 })
 
 -- Criação da aba principal
-local Main = MakeTab({Name = "Jogador"})
-local Visuais = MakeTab({Name = "Visuais"})
+local Main = MakeTab({Name = "Geral"})
+local player  = MakeTab({Name = "Jogador"})
+local Visual = MakeTab({Name = "Esp"})
 
 -- Notificação inicial
 -- Removido se não quiser notificação:
@@ -206,94 +207,6 @@ AddToggle(Main, {
         end
     end
 })
-
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
-local jogadorSelecionado = nil
-local observando = false
-local observarConnection = nil
-
--- Função para observar o jogador
-local function observarJogador(jogador)
-	if observarConnection then
-		observarConnection:Disconnect()
-	end
-
-	local function setarCamera()
-		if jogador.Character and jogador.Character:FindFirstChild("Humanoid") then
-			workspace.CurrentCamera.CameraSubject = jogador.Character.Humanoid
-			print("Observando: " .. jogador.Name)
-		end
-	end
-
-	setarCamera()
-
-	observarConnection = jogador.CharacterAdded:Connect(function()
-		task.wait(1)
-		if observando then
-			setarCamera()
-		end
-	end)
-end
-
--- Função para parar de observar
-local function pararObservar()
-	if observarConnection then
-		observarConnection:Disconnect()
-		observarConnection = nil
-	end
-	observando = false
-
-	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-		workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
-	end
-
-	print("Observação desativada.")
-end
-
--- Caixa de texto para digitar o nome do jogador
-AddTextbox(Main, {
-	Name = "Digitar ó nome do Jogador",
-	Default = "",
-	TextDisappear = false,
-	Callback = function(nome)
-		local player = Players:FindFirstChild(nome)
-		if player and player ~= LocalPlayer then
-			jogadorSelecionado = player
-			print("Jogador selecionado: " .. player.Name)
-		else
-			warn("Jogador não encontrado ou é você.")
-			jogadorSelecionado = nil
-		end
-	end
-})
-
--- Toggle para ativar/desativar observação
-AddToggle(Main, {
-	Name = "Observar Jogador",
-	Default = false,
-	Callback = function(Value)
-		if Value then
-			if jogadorSelecionado then
-				observando = true
-				observarJogador(jogadorSelecionado)
-			else
-				warn("Digite um nome de jogador válido primeiro.")
-			end
-		else
-			pararObservar()
-		end
-	end
-})
-
--- Parar observação se o jogador sair
-Players.PlayerRemoving:Connect(function(player)
-	if jogadorSelecionado == player then
-		pararObservar()
-		jogadorSelecionado = nil
-	end
-end)
 
 -- Variáveis de controle
 local espAtivado = false
@@ -569,3 +482,91 @@ AddToggle(Visuais, {
         aplicarFov()
     end
 })
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local jogadorSelecionado = nil
+local observando = false
+local observarConnection = nil
+
+-- Função para observar o jogador
+local function observarJogador(jogador)
+	if observarConnection then
+		observarConnection:Disconnect()
+	end
+
+	local function setarCamera()
+		if jogador.Character and jogador.Character:FindFirstChild("Humanoid") then
+			workspace.CurrentCamera.CameraSubject = jogador.Character.Humanoid
+			print("Observando: " .. jogador.Name)
+		end
+	end
+
+	setarCamera()
+
+	observarConnection = jogador.CharacterAdded:Connect(function()
+		task.wait(1)
+		if observando then
+			setarCamera()
+		end
+	end)
+end
+
+-- Função para parar de observar
+local function pararObservar()
+	if observarConnection then
+		observarConnection:Disconnect()
+		observarConnection = nil
+	end
+	observando = false
+
+	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+		workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
+	end
+
+	print("Observação desativada.")
+end
+
+-- Caixa de texto para digitar o nome do jogador
+AddTextbox(player, {
+	Name = "Digitar ó nome do Jogador",
+	Default = "",
+	TextDisappear = false,
+	Callback = function(nome)
+		local player = Players:FindFirstChild(nome)
+		if player and player ~= LocalPlayer then
+			jogadorSelecionado = player
+			print("Jogador selecionado: " .. player.Name)
+		else
+			warn("Jogador não encontrado ou é você.")
+			jogadorSelecionado = nil
+		end
+	end
+})
+
+-- Toggle para ativar/desativar observação
+AddToggle(player, {
+	Name = "Observar Jogador",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			if jogadorSelecionado then
+				observando = true
+				observarJogador(jogadorSelecionado)
+			else
+				warn("Digite um nome de jogador válido primeiro.")
+			end
+		else
+			pararObservar()
+		end
+	end
+})
+
+-- Parar observação se o jogador sair
+Players.PlayerRemoving:Connect(function(player)
+	if jogadorSelecionado == player then
+		pararObservar()
+		jogadorSelecionado = nil
+	end
+end)
