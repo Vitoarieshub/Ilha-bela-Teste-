@@ -46,16 +46,6 @@ local Player = MakeTab({Name = "Auxílios"})
 --     Time = 5
 -- })
 
-AddButton(Main, {
-    Name = "Fly GUI Car",
-    Callback = function()
-        print("Botão foi clicado!")
-        pcall(function()
-            loadstring(game:HttpGet('https://raw.githubusercontent.com/ScpGuest666/Random-Roblox-script/refs/heads/main/Roblox%20Vehicle%20Fly%20Gui%20script'))()
-        end)
-    end
-})
-
 -- Noclip
 local noclipConnection
 
@@ -215,33 +205,8 @@ local LocalPlayer = Players.LocalPlayer
 local jogadorSelecionado = nil
 local observando = false
 local observarConnection = nil
-local dropdownRef = nil
 
--- Gera a lista atual de jogadores válidos
-local function gerarListaDeJogadores()
-	local nomes = {}
-	for _, player in ipairs(Players:GetPlayers()) do
-		if player ~= LocalPlayer then
-			table.insert(nomes, player.Name)
-		end
-	end
-	return nomes
-end
-
--- Atualiza automaticamente o dropdown
-local function atualizarListaDropdown()
-	local nomesAtuais = gerarListaDeJogadores()
-
-	if jogadorSelecionado and not Players:FindFirstChild(jogadorSelecionado.Name) then
-		jogadorSelecionado = nil
-	end
-
-	if dropdownRef and dropdownRef.UpdateOptions then
-		dropdownRef:UpdateOptions(nomesAtuais)
-	end
-end
-
--- Observação contínua
+-- Função para observar o jogador
 local function observarJogador(jogador)
 	if observarConnection then
 		observarConnection:Disconnect()
@@ -250,21 +215,21 @@ local function observarJogador(jogador)
 	local function setarCamera()
 		if jogador.Character and jogador.Character:FindFirstChild("Humanoid") then
 			workspace.CurrentCamera.CameraSubject = jogador.Character.Humanoid
-			print("Observando " .. jogador.Name)
+			print("Observando: " .. jogador.Name)
 		end
 	end
 
 	setarCamera()
 
 	observarConnection = jogador.CharacterAdded:Connect(function()
-		wait(1)
+		task.wait(1)
 		if observando then
 			setarCamera()
 		end
 	end)
 end
 
--- Parar observação
+-- Função para parar de observar
 local function pararObservar()
 	if observarConnection then
 		observarConnection:Disconnect()
@@ -279,28 +244,26 @@ local function pararObservar()
 	print("Observação desativada.")
 end
 
--- Criação do dropdown inicial
-dropdownRef = AddDropdown(Main, {
-	Name = "Selecionar jogador para observar",
-	Options = gerarListaDeJogadores(),
-	Callback = function(valorSelecionado)
-		jogadorSelecionado = Players:FindFirstChild(valorSelecionado)
+-- Caixa de texto para digitar o nome do jogador
+AddTextbox(Main, {
+	Name = "Digitar ó nome do Jogador",
+	Default = "",
+	TextDisappear = false,
+	Callback = function(nome)
+		local player = Players:FindFirstChild(nome)
+		if player and player ~= LocalPlayer then
+			jogadorSelecionado = player
+			print("Jogador selecionado: " .. player.Name)
+		else
+			warn("Jogador não encontrado ou é você.")
+			jogadorSelecionado = nil
+		end
 	end
 })
 
--- Atualização automática da lista quando jogadores entram ou saem
-Players.PlayerAdded:Connect(atualizarListaDropdown)
-Players.PlayerRemoving:Connect(function(player)
-	if jogadorSelecionado == player then
-		pararObservar()
-		jogadorSelecionado = nil
-	end
-	atualizarListaDropdown()
-end)
-
--- Toggle para observar
+-- Toggle para ativar/desativar observação
 AddToggle(Main, {
-	Name = "Observar",
+	Name = "Observar Jogador",
 	Default = false,
 	Callback = function(Value)
 		if Value then
@@ -308,13 +271,21 @@ AddToggle(Main, {
 				observando = true
 				observarJogador(jogadorSelecionado)
 			else
-				warn("Nenhum jogador selecionado.")
+				warn("Digite um nome de jogador válido primeiro.")
 			end
 		else
 			pararObservar()
 		end
 	end
 })
+
+-- Parar observação se o jogador sair
+Players.PlayerRemoving:Connect(function(player)
+	if jogadorSelecionado == player then
+		pararObservar()
+		jogadorSelecionado = nil
+	end
+end)
 
 -- Variáveis de controle
 local espAtivado = false
@@ -544,4 +515,54 @@ AddToggle(Visuais, {
 	Callback = function(Value)
 		toggleEsp(Value)
 	end
+})
+
+AddButton(Player, {
+    Name = "Fly GUI Car",
+    Callback = function()
+        print("Botão foi clicado!")
+        pcall(function()
+            loadstring(game:HttpGet('https://raw.githubusercontent.com/ScpGuest666/Random-Roblox-script/refs/heads/main/Roblox%20Vehicle%20Fly%20Gui%20script'))()
+        end)
+    end
+})
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local balasInfinitaAtiva = false
+local ammoLoop = nil
+
+-- Função para ativar/desativar balas infinitas
+local function definirBalasInfinita(ativar)
+    balasInfinitaAtiva = ativar
+
+    if ammoLoop then
+        ammoLoop:Disconnect()
+        ammoLoop = nil
+    end
+
+    if ativar then
+        ammoLoop = game:GetService("RunService").RenderStepped:Connect(function()
+            local ferramenta = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
+            if ferramenta then
+                for _, v in pairs(ferramenta:GetDescendants()) do
+                    if v:IsA("IntValue") or v:IsA("NumberValue") then
+                        if v.Name:lower():find("ammo") or v.Name:lower():find("muni") then
+                            v.Value = 999999
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end
+
+-- Botão para ativar/desativar
+AddButton(Player, {
+    Name = "Bala Infinita",
+    Callback = function()
+        definirBalasInfinita(not balasInfinitaAtiva)
+        print("Bala Infinita: " .. tostring(balasInfinitaAtiva))
+    end
 })
