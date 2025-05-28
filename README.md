@@ -35,8 +35,6 @@ MinimizeButton({
 -- Criação da aba principal
 local Main = MakeTab({Name = "Jogador"})
 local Visuais = MakeTab({Name = "Visuais"})
-local Player = MakeTab({Name = "Auxílios"})
-
 
 -- Notificação inicial
 -- Removido se não quiser notificação:
@@ -45,6 +43,16 @@ local Player = MakeTab({Name = "Auxílios"})
 --     Text = "Carregando com sucesso!",
 --     Time = 5
 -- })
+
+AddButton(Main, {
+    Name = "Fly GUI Car",
+    Callback = function()
+        print("Botão foi clicado!")
+        pcall(function()
+            loadstring(game:HttpGet('https://raw.githubusercontent.com/ScpGuest666/Random-Roblox-script/refs/heads/main/Roblox%20Vehicle%20Fly%20Gui%20script'))()
+        end)
+    end
+})
 
 -- Noclip
 local noclipConnection
@@ -559,15 +567,5 @@ AddToggle(Visuais, {
     Callback = function(Value)
         fovAtivado = Value
         aplicarFov()
-    end
-})
-
-AddButton(Player, {
-    Name = "Fly GUI Car",
-    Callback = function()
-        print("Botão foi clicado!")
-        pcall(function()
-            loadstring(game:HttpGet('https://raw.githubusercontent.com/ScpGuest666/Random-Roblox-script/refs/heads/main/Roblox%20Vehicle%20Fly%20Gui%20script'))()
-        end)
     end
 })
