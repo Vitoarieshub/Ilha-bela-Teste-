@@ -33,9 +33,10 @@ MinimizeButton({
 })
 
 -- Criação da aba principal
-local Main = MakeTab({Name = "Geral"})
+local Main = MakeTab({Name = "Início"})
 local Player  = MakeTab({Name = "Jogador"})
 local Visual = MakeTab({Name = "Esp"})
+local Car = MakeTab({Name = "Carro"})
 
 -- Notificação inicial
 -- Removido se não quiser notificação:
@@ -438,160 +439,23 @@ AddToggle(Visual, {
 	end
 })
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local RunService = game:GetService("RunService")
+AddSlider(Car, {
+    Name = "Velocidade do Carro",
+    MinValue = 50,
+    MaxValue = 500,
+    Default = 100,
+    Increase = 10,
+    Callback = function(value)
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+        if not character then return end
 
-local playerName = ""
-local jogadorSelecionado = nil
-local observando = false
-local observarConnection = nil
-local teleportLoopConnection = nil
-local teleportando = false
-local dropdownRef = nil
-
--- Função para encontrar jogador pelo nome digitado (busca parcial)
-local function encontrarJogador(nome)
-	local lowerName = nome:lower()
-	for _, player in pairs(Players:GetPlayers()) do
-		if player.Name:lower():sub(1, #lowerName) == lowerName then
-			return player
-		end
-	end
-	return nil
-end
-
--- Caixa de texto para digitar nome do jogador
-AddTextBox(Player, {
-	Name = "Digite o nome do jogador",
-	Default = "",
-	Placeholder = "Nome do jogador aqui...",
-	Callback = function(text)
-		playerName = text
-		jogadorSelecionado = encontrarJogador(playerName)
-	end
+        local seat = character:FindFirstChildOfClass("VehicleSeat") or character:FindFirstChildWhichIsA("VehicleSeat", true)
+        if seat then
+            seat.MaxSpeed = value
+            print("Velocidade do carro ajustada para: " .. value)
+        else
+            warn("Você não está em um veículo!")
+        end
+    end
 })
-
--- Parar observação
-local function pararObservar()
-	if observarConnection then
-		observarConnection:Disconnect()
-		observarConnection = nil
-	end
-	observando = false
-	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-		workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
-	end
-	print("Observação desativada.")
-end
-
--- Iniciar observação
-local function iniciarObservar(jogador)
-	if not jogador or jogador == LocalPlayer then
-		warn("Jogador inválido para observar.")
-		return
-	end
-
-	observando = true
-
-	if not jogador.Character or not jogador.Character:FindFirstChild("Humanoid") then
-		warn("Personagem do jogador não está disponível.")
-		return
-	end
-
-	workspace.CurrentCamera.CameraSubject = jogador.Character.Humanoid
-	print("Observando " .. jogador.Name)
-
-	observarConnection = jogador.CharacterAdded:Connect(function()
-		wait(1)
-		if observando then
-			if jogador.Character and jogador.Character:FindFirstChild("Humanoid") then
-				workspace.CurrentCamera.CameraSubject = jogador.Character.Humanoid
-				print("Continuando observação após respawn.")
-			end
-		end
-	end)
-end
-
--- Toggle para observar
-AddToggle(Player, {
-	Name = "Observar",
-	Default = false,
-	Callback = function(Value)
-		jogadorSelecionado = encontrarJogador(playerName)
-		if Value then
-			if jogadorSelecionado then
-				iniciarObservar(jogadorSelecionado)
-			else
-				warn("Jogador não encontrado para observar.")
-			end
-		else
-			pararObservar()
-		end
-	end
-})
-
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
-local playerName = ""
-local jogadorSelecionado = nil
-
--- Função para encontrar jogador pelo nome digitado (busca parcial)
-local function encontrarJogador(nome)
-	local lowerName = nome:lower()
-	for _, player in pairs(Players:GetPlayers()) do
-		if player.Name:lower():sub(1, #lowerName) == lowerName then
-			return player
-		end
-	end
-	return nil
-end
-
--- Função para verificar e exibir o dinheiro do jogador
-local function mostrarDinheiro(jogador)
-	if not jogador then
-		warn("Jogador não encontrado.")
-		return
-	end
-
-	local leaderstats = jogador:FindFirstChild("leaderstats")
-	if leaderstats then
-		local dinheiro = leaderstats:FindFirstChild("Money") or leaderstats:FindFirstChild("Dinheiro") or leaderstats:FindFirstChild("Cash")
-		if dinheiro and dinheiro:IsA("IntValue") then
-			print(jogador.Name .. " tem R$" .. dinheiro.Value)
-			MakeNotifi({
-				Title = "Dinheiro Encontrado",
-				Text = jogador.Name .. " tem R$" .. dinheiro.Value,
-				Time = 5
-			})
-		else
-			warn("Esse jogador não possui valor de dinheiro visível.")
-			MakeNotifi({
-				Title = "Erro",
-				Text = "Jogador sem valor de dinheiro detectável.",
-				Time = 5
-			})
-		end
-	else
-		warn("leaderstats não encontrado no jogador.")
-		MakeNotifi({
-			Title = "Erro",
-			Text = "O jogador não tem leaderstats.",
-			Time = 5
-		})
-	end
-end
-
--- Caixa de texto para digitar o nome do jogador e exibir dinheiro
-AddTextBox(Player, {
-	Name = "Ver Dinheiro do Jogador",
-	Default = "",
-	Placeholder = "Digite o nome aqui...",
-	Callback = function(text)
-		playerName = text
-		jogadorSelecionado = encontrarJogador(playerName)
-		mostrarDinheiro(jogadorSelecionado)
-	end
-})
-
